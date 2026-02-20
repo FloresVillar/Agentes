@@ -1,0 +1,30 @@
+version: "3.9"
+
+services:
+  app:
+    build: .
+    container_name: agente-python
+    depends_on:
+      - ollama
+    environment:
+      - OLLAMA_HOST=http://ollama:11434
+    networks:
+      - agent-network 
+    stdin_open: true
+    tty: true
+
+  ollama:
+    image: ollama/ollama
+    container_name: ollama-server 
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama-data:/root/.ollama
+    networks:
+      - agent-network
+    
+volumes:
+  ollama-data:
+
+networks:
+  agent-network:

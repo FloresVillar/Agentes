@@ -1,3 +1,4 @@
+
 def consultar_empresa(nombre):
     mock = {
         "Empresa X":100,

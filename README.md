@@ -280,6 +280,8 @@ Finalmente, en el LLM tradicional ,el argmax genera contenido . En tanto que en 
 
 
 # Parte practica
+
+Como inicio se define el arbol de directorios,segun la practica recomendada y siguiendo las practicas 
 Entorno vitual
 ```bash
     python -m venv venv_agentes

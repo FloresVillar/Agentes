@@ -1,0 +1,10 @@
+.env
+venv*/
+**/__pycache__/
+*.tar
+*.tar.gz
+.docker/
+*/data/
+*.log
+log/
+nginx/logs/
