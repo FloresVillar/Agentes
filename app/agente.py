@@ -3,7 +3,7 @@ from .llm import llamada_a_modelo
 from .mcp import ejecutar_herramienta
 
 PROMPT = """
-RESPONDE SIEMPRE EN FORMATO JSON. NO SALUDES. NO SEAS AMABLE.
+RESPONDE SIEMPRE EN FORMATO JSON. 
 
 Si necesitas información de una empresa, usa:
 {"herramienta_llamada":"consultar_empresa", "parametros":{"nombre":"NOMBRE"}}

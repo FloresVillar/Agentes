@@ -277,9 +277,13 @@ El argmax ocurre multiples veces , es un ciclo de pensamiento. El proceso matema
 
 Finalmente, en el LLM tradicional ,el argmax genera contenido . En tanto que en el agente, el argmax genera primero instrucciones de control (llama a la API) y luego de ello genera el contenido.
 
+## Comandos de Ejecucion
 
+```bash
 
-# Parte practica
+```
+
+## Parte practica
 
 Como inicio se define el arbol de directorios,segun la practica recomendada y siguiendo las practicas de diseño 
 ```bash
@@ -308,7 +312,7 @@ Como inicio se define el arbol de directorios,segun la practica recomendada y si
 ```
 Se dispondran de dos servicios **app**  y **ollama** ambos dentro de contenedores levantado en base a imagenes Docker.
 
- Para el **services** con etiqueta **app** , construye su imagen mediante la instruccion **build** quien establece su contexto en la carpeta actual **.** de modo que buscara en la carpeta actual el **Dcokerfile** . Se establece la relacion de orden  (no de disponibilidad)  por lo que se recomienda usar un **healthcheck** de modo que Docker correra esta prueba cada ciertos segundos. en services **ollama: condition: service_healthy** y en ollama **healthcheck: test** .
+ Para el **services** con etiqueta **app** , construye su imagen mediante la instruccion **build** quien establece su contexto en la carpeta actual **.** de modo que buscara en la carpeta actual el **Dockerfile** . Se establece la relacion de orden  (no de disponibilidad)  por lo que se recomienda usar un **healthcheck** de modo que Docker correra esta prueba cada ciertos segundos. en services **ollama: condition: service_healthy** y en ollama **healthcheck: test** .
 
 Seguidamente las variables de entorno que python recibira **environment:** **OLLAMA_HOST =** que Docker resolvera automaticamente.
 
@@ -328,7 +332,6 @@ Asimismo **networks** crea una red privada tipo bridge(por defecto). El DNS inte
 
 
 ```bash
-
 ________________________________________________________________________
 |                                                                        |
 |   HOST (Tu Computadora / Servidor)                                     |
@@ -358,6 +361,29 @@ ________________________________________________________________________
 |________________________________________________________________________|
 Cortesia de Gemini
 ```
+Una vez declarado la insfraestructura, veamos que arquitectura sustenta el proceso congnitivo.
+
+Debido al este nivel casi introductoria , se implementara la teoria de agentes casi tal cual, esto es como un proceso de desicion secuencial.
+### Agentes.py
+
+En **Agentes.py** Se calcula la accion mas probable **a_t = llamada_a_modelo** quien implementa la distribucion de probabilidad de las acciones probables dado el promp y el historial **at = argmax Ptheta(a | x,ht-1)**
+
+La acccion a_t **{"herramienta_llamada":"consultar_empresa", "parametros":{"nombre":"Empresa X"}}** .  
+
+Ahora con la accion obtenida , ejecutamos la herramienta con los parametros de la accion , esto es la parte practica de **o = MCP . execute Ti(params) =  E(Ti, params)**, se usara un mcp ficticio , sin embargo cabe señalar que este protocolo para la obtencion de output en base a herramientas es mas potente.
+
+
+Finalmente actualizamos el historial **h_t+1 = h_T  + a_t  +  o_t** , los h_t.append respetan el estandar de la API de OpenAI, debido a que esta espera que los mensajes tengan un "contrato" especifico, en este caso diccionarios donde las claves son rol y content.
+
+
+La salida de la iteracion se da cuando a_t no contiene la clave **herramienta_llamada** esto es que ya se obtuvo a respuesta final
+
+### llm.py
+En este script vive el modelo ollama , tambien provisto por openai, si bien es cierto que existen modelos mejores , con cientos de millones de parametros (W y b) , por un tema de limitaciones de memoria se usara el modelo llama3.2 , uno muy liviano.
+
+Se crea el cliente **cliente = OpenAI()** con una variable de entorno por defecto **OLLAMA_HOST** .
+
+La funcion **llamada_a_modelo** invocada desde agentes.py concatena el historial de **mensajes** , haciendo luego la consulta al modelo con ese mensaje como argumento **cliente.chat.completions.create(..message=mensajes..)**
 
 Entorno virtual
 ```bash

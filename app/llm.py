@@ -7,7 +7,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 #cliente = OpenAI(api_key="ollama",base_url="http://localhost:11434/v1")
-# cliente = Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))  # VERSIÓN ANTERIOR
+#cliente = Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))  # VERSIÓN ANTERIOR
 cliente = OpenAI(api_key="ollama",base_url=os.getenv("OLLAMA_HOST")+"/v1")
 
 def llamada_a_modelo(historial, prompt): 
