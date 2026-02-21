@@ -4,8 +4,14 @@ switch ($command) {
     "build" {
         docker compose build
     }
-    "up" {
-        docker compose up -d
+    "run" {
+        Write-Host "Build"
+        docker compose up -d 
+        Write-Host "instalar modelos"
+        docker exec -it ollama-server ollama pull llama3.2:1b
+        Write-Host "reiniciando agente-python"
+        docker restart agente-python
+        Write-Host "COMPLETADO"
     }
     "down" {
         docker compose down
@@ -13,9 +19,7 @@ switch ($command) {
     "logs" {
         docker compose logs -f
     }
-    "instalar-modelo" {
-        docker exec -it ollama-server ollama pull llama2
-    }
+    
     "shell-app" {
         docker exec -it agente-python /bin/bash
     }

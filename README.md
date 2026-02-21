@@ -281,8 +281,85 @@ Finalmente, en el LLM tradicional ,el argmax genera contenido . En tanto que en 
 
 # Parte practica
 
-Como inicio se define el arbol de directorios,segun la practica recomendada y siguiendo las practicas 
-Entorno vitual
+Como inicio se define el arbol de directorios,segun la practica recomendada y siguiendo las practicas de diseño 
+```bash
+.
+├── app
+│   ├── agente.py
+│   ├── __init__.py
+│   ├── llm.py
+│   ├── main.py
+│   ├── mcp.py
+│   ├── memory
+│   ├── __pycache__
+│   ├── schemas
+│   └── tools
+        ├── empresa.py
+├── docker-compose.yml
+├── Dockerfile
+├── Makefile
+├── README.md
+├── requirements.txt
+├── run_docker.ps1
+├── run_local.ps1
+├── tests
+└── venv_agentes
+
+```
+Se dispondran de dos servicios **app**  y **ollama** ambos dentro de contenedores levantado en base a imagenes Docker.
+
+ Para el **services** con etiqueta **app** , construye su imagen mediante la instruccion **build** quien establece su contexto en la carpeta actual **.** de modo que buscara en la carpeta actual el **Dcokerfile** . Se establece la relacion de orden  (no de disponibilidad)  por lo que se recomienda usar un **healthcheck** de modo que Docker correra esta prueba cada ciertos segundos. en services **ollama: condition: service_healthy** y en ollama **healthcheck: test** .
+
+Seguidamente las variables de entorno que python recibira **environment:** **OLLAMA_HOST =** que Docker resolvera automaticamente.
+
+**networks** declara la red para los contenedores (estado deseado) , recordar que el .yml describe el estado deseado que Docker se encargara de construir.
+
+En tanto que las sentencias **stdin_open: true** y **tty: true** mantienen el contenedor interactivo
+
+
+Para el service **ollama** usamos una imagen disponible en DockerHub , mapeamos los puertos **host:contenedor** , de esta forma el usario se comunica desde su maquina con el contenedor.
+Seguidamente con sentencia **volumes** Docker guardara los modelos descargados  en el volumen **ollama-data** ,de tal forma que si se borra el contenedor, lo descargado persiste.
+
+Finalmente las clausuras del contrato , las declaraciones globales **volumes y networks** dan permiso a Docker para crear un objeto de almacenamiento independiente , de modo que Docker gestiona una area en disco sin que se tenga que crear una carpeta para guardar el modelo. Este es el volumen persistente del que hablamos antes. 
+
+Asimismo **networks** crea una red privada tipo bridge(por defecto). El DNS interno de esta red permite que python use http://ollama y asigne ip para esta red.
+
+
+
+
+```bash
+
+________________________________________________________________________
+|                                                                        |
+|   HOST (Tu Computadora / Servidor)                                     |
+|    ________________________________________________________________    |
+|   |                                                                |   |
+|   |   RED VIRTUAL (agent-network)                                  |   |
+|   |   [ Permite que los contenedores se hablen por su nombre ]     |   |
+|   |    __________________________        __________________________|   |
+|   |   |                          |      |                          |   |
+|   |   |  CONTENEDOR:             |      |  CONTENEDOR:             |   |
+|   |   |  agente-python           |      |  ollama-server           |   |
+|   |   |__________________________|      |__________________________|   |
+|   |   |                          |      |                          |   |
+|   |   |   SERVICIO (app):        |      |   SERVICIO (ollama):     |   |
+|   |   |   > Código Python        | <==> |   > Servidor Ollama      |   |
+|   |   |   > Entorno:             | (API)|   > Puerto: 11434        |   |
+|   |   |     OLLAMA_HOST          |      |                          |   |
+|   |   |__________________________|      |__________________________|   |
+|   |                ^                    |            |             |   |
+|   |________________|____________________|____________|_____________|   |
+|                    |                                 |                 |
+|      PUERTO 11434  |               VOLUMEN EXTERNO   |                 |
+|      (Acceso desde |               (ollama-data)     |                 |
+|       tu navegador)|               [ Guarda los      |                 |
+|             ^      |                 Modelos LLM ] <—/                 |
+|             \______/                                                   |
+|________________________________________________________________________|
+Cortesia de Gemini
+```
+
+Entorno virtual
 ```bash
     python -m venv venv_agentes
     .\venv_agentes\Scripts\activate

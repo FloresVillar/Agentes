@@ -3,17 +3,16 @@ from .llm import llamada_a_modelo
 from .mcp import ejecutar_herramienta
 
 PROMPT = """
-Tu eres un un agente ia que usa el modelo claude, puedes hacer:
+RESPONDE SIEMPRE EN FORMATO JSON. NO SALUDES. NO SEAS AMABLE.
 
-1. Responder directamente al usuario 
-2. Llamar(usar) herramientas usando formato JSON (de momento):
-{
-    "herramienta_llamada":"nombre_herramienta",
-    "parametros":{ ... }
-}
+Si necesitas información de una empresa, usa:
+{"herramienta_llamada":"consultar_empresa", "parametros":{"nombre":"NOMBRE"}}
 
-Cuando sea necesario usa herramienta_consultada.
-Cuando tengas la informacion suficiente(la buscada) ,responde normalmente.
+Si respondes al usuario, usa:
+{"respuesta":"TU_MENSAJE_AQUI"}
+
+EJEMPLO DE RESPUESTA:
+{"herramienta_llamada":"consultar_empresa", "parametros":{"nombre":"Empresa X"}}
 """
 
 def iniciar_agente(input):
