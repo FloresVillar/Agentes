@@ -10,15 +10,21 @@ Herramienta:
 
 Respuesta:
 {"respuesta":"texto"}
+
 """
 
 def iniciar_agente(input):
     h_t = [{"role":"user","content":input}]
+    ya_ejecuto = False
     while True:
-        a_t = llamada_a_modelo(h_t,PROMPT)                    #a_t ~ Pθ(a_T | h_t )
+        a_t = llamada_a_modelo(h_t,PROMPT)              #a_t ~ Pθ(a_T | h_t )
+        a_t = a_t.strip()
+        if a_t.startswith("```"):
+            a_t = a_t.replace("```json", "").replace("```", "").strip()
         try:
             a_t_ = json.loads(a_t)
-            if "herramienta_llamada" in a_t_:
+            if "herramienta_llamada" in a_t_ and not ya_ejecuto:
+                ya_ejecuto = True
                 nombre_herramienta = a_t_["herramienta_llamada"]
                 parametros = a_t_["parametros"]
                 o_t = ejecutar_herramienta(nombre_herramienta,parametros)   #o_t = E(T_i,params)
