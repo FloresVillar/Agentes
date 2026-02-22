@@ -6,9 +6,9 @@ services:
     container_name: agente-python
     volumes: 
       - ./app:/app/app
-    #depends_on:
-    #  ollama:
-    #    condition: service_healthy
+    depends_on:
+      ollama:
+        condition: service_healthy
     environment:
       - OLLAMA_HOST=http://ollama:11434
     networks:
@@ -27,7 +27,7 @@ services:
       - agent-network
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:11434/api/tags"]
-      interval: 1m30s
+      interval: 10s
       timeout: 30s
       retries: 5
       start_period: 30s

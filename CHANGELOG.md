@@ -132,3 +132,22 @@ Usuario:
 ```
 
 Consiguiendo los objetivos deseados, siempre en el contexto de un modelo muy ligero.
+
+La depuracion (aunque suene pretensioso) se realiza merced de los comandos docker:
+```bash
+    docker compose up -d #encendemos los motores , se construye el contenedor , mo si ya existiera -d se encarga de ello
+```
+Luego hecho los cambios en los scripts **docker exec -it agente-python /bin/bash** es un nuevo proceso que lee el archivo desde disco (ya con los cambios), pero el servidor podria estar usando funciones  un proceso anterior que estan en la RAM, luego la API seguria respindiendo con la logica anterior , para evitar esto se usa
+```bash 
+docker compose restart app
+```
+Una vez dentro del contenedor , se realiza la consulta 
+```bash
+root@36b32f6eb10f:/app# python -m app.main
+Usuario:consulta empresa Y
+output del entorno: {'empleados': 200}
+
+Respuesta final:{"herramienta_llamada":"consultar_empresa","parametros":{"nombre":"Empresa Y"},"respuesta": "Los empleados de la empresa Y son 200" }
+Usuario:salir
+Terminando
+```

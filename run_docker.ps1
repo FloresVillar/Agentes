@@ -8,7 +8,7 @@ switch ($command) {
         Write-Host "Build"
         docker compose up -d 
         Write-Host "instalar modelos"
-        docker exec -it ollama-server ollama pull llama3.2:1b
+        docker exec ollama-server ollama pull llama3.2:1b
         Write-Host "reiniciando agente-python"
         docker restart agente-python
         Write-Host "COMPLETADO"
@@ -21,7 +21,7 @@ switch ($command) {
     }
     
     "shell-app" {
-        docker exec -it agente-python /bin/bash
+            docker exec -it agente-python /bin/bash
     }
     "limpieza" {
         docker system prune -af

@@ -1,0 +1,4 @@
+venv_agentes/
+__pycache__/ 
+.git/
+*.png

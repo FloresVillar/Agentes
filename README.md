@@ -1,4 +1,59 @@
 # USO DE AGENTES
+
+**La infraestructura del proyecto** 
+
+```bash
+________________________________________________________________________
+|                                                                        |
+|   HOST (Tu Computadora / Servidor)                                     |
+|    ________________________________________________________________    |
+|   |                                                                |   |
+|   |   RED VIRTUAL (agent-network)                                  |   |
+|   |   [ Permite que los contenedores se hablen por su nombre ]     |   |
+|   |    __________________________        __________________________|   |
+|   |   |                          |      |                          |   |
+|   |   |  CONTENEDOR:             |      |  CONTENEDOR:             |   |
+|   |   |  agente-python           |      |  ollama-server           |   |
+|   |   |__________________________|      |__________________________|   |
+|   |   |                          |      |                          |   |
+|   |   |   SERVICIO (app):        |      |   SERVICIO (ollama):     |   |
+|   |   |   > Código Python        | <==> |   > Servidor Ollama      |   |
+|   |   |   > Entorno:             | (API)|   > Puerto: 11434        |   |
+|   |   |     OLLAMA_HOST          |      |                          |   |
+|   |   |__________________________|      |__________________________|   |
+|   |                ^                    |            |             |   |
+|   |________________|____________________|____________|_____________|   |
+|                    |                                 |                 |
+|      PUERTO 11434  |               VOLUMEN EXTERNO   |                 |
+|      (Acceso desde |               (ollama-data)     |                 |
+|       tu navegador)|               [ Guarda los      |                 |
+|             ^      |                 Modelos LLM ] <—/                 |
+|             \______/                                                   |
+|________________________________________________________________________|
+Cortesia de Gemini
+```
+
+**La arquitectura**
+
+<p align=center>
+    <img src=imagenes/arquitectura.png width="80%">
+</p>
+    
+**Ejecucion**
+ 
+```bash
+    python -m venv venv_agentes
+    .\venv_agentes\Scripts\activate
+    # ejecutando el .ps1 analogo a Makefile
+    .\run_docker.ps1 build    # construccion de imagenes
+    .\run_docker.ps1 run      # levantando contenedores  e instalacion del modelo
+    .\run_docker shell-app    #dentro de agente-python
+    python -m main app.main    
+    #input recomendado
+    consulta empresa X
+```
+Ahora se detalla la teoria implementada
+
 **Resumen amablemente sintetizado por chatgpt**
 
 Un agente es un SISTEMA que 
@@ -277,13 +332,8 @@ El argmax ocurre multiples veces , es un ciclo de pensamiento. El proceso matema
 
 Finalmente, en el LLM tradicional ,el argmax genera contenido . En tanto que en el agente, el argmax genera primero instrucciones de control (llama a la API) y luego de ello genera el contenido.
 
-## Comandos de Ejecucion
-
-```bash
-
-```
-
-## Parte practica
+ 
+## Descripcion de la "infraestructura"
 
 Como inicio se define el arbol de directorios,segun la practica recomendada y siguiendo las practicas de diseño 
 ```bash
@@ -336,37 +386,8 @@ Asimismo **networks** crea una red privada tipo bridge(por defecto). El DNS inte
 
 
 
+## Descripcion de la arquitectura
 
-```bash
-________________________________________________________________________
-|                                                                        |
-|   HOST (Tu Computadora / Servidor)                                     |
-|    ________________________________________________________________    |
-|   |                                                                |   |
-|   |   RED VIRTUAL (agent-network)                                  |   |
-|   |   [ Permite que los contenedores se hablen por su nombre ]     |   |
-|   |    __________________________        __________________________|   |
-|   |   |                          |      |                          |   |
-|   |   |  CONTENEDOR:             |      |  CONTENEDOR:             |   |
-|   |   |  agente-python           |      |  ollama-server           |   |
-|   |   |__________________________|      |__________________________|   |
-|   |   |                          |      |                          |   |
-|   |   |   SERVICIO (app):        |      |   SERVICIO (ollama):     |   |
-|   |   |   > Código Python        | <==> |   > Servidor Ollama      |   |
-|   |   |   > Entorno:             | (API)|   > Puerto: 11434        |   |
-|   |   |     OLLAMA_HOST          |      |                          |   |
-|   |   |__________________________|      |__________________________|   |
-|   |                ^                    |            |             |   |
-|   |________________|____________________|____________|_____________|   |
-|                    |                                 |                 |
-|      PUERTO 11434  |               VOLUMEN EXTERNO   |                 |
-|      (Acceso desde |               (ollama-data)     |                 |
-|       tu navegador)|               [ Guarda los      |                 |
-|             ^      |                 Modelos LLM ] <—/                 |
-|             \______/                                                   |
-|________________________________________________________________________|
-Cortesia de Gemini
-```
 Una vez declarado la insfraestructura, veamos que arquitectura sustenta el proceso congnitivo.
 
 Debido al este nivel casi introductoria , se implementara la teoria de agentes casi tal cual, esto es como un proceso de desicion secuencial.
@@ -403,20 +424,8 @@ Las funciones consultar_empresa reciben el nombre como argumento y devuelven la 
 
 Finalmente  el script que inicia la ejecucion , dentro de un bucle se recibe la entrada de usuario y se hace la llamada al agente via **iniciar_agente** , esto sera ejecutado (eso se pretende) dentro del contenedor que correra la linea CMD ["python","-m","app.main"]
 
-La siguiente imagen de elaboracion propia corresponde a la arquitectura minimalista del proyecto
-
-<p align=center>
-    <img src=imagenes/arquitectura.png width="80%">
-</p>
+La imagen de elaboracion propia corresponde a la arquitectura minimalista del proyecto (ver imagen de arquitectura al inicio)
 
 
-Entorno virtual
-```bash
-    python -m venv venv_agentes
-    .\venv_agentes\Scripts\activate
-```
-Instalando anthropic
 
-```bash
-    pip install anthropic
-```
+ 
