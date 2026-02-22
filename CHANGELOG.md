@@ -1,6 +1,7 @@
 Una vez detalla la arquitectura, descrito de manera detallada en funcionamiento de todos scripts e implementada la teoria matematica; testearemos dentro del contenedor 
 **agente-python** 
 
+Merced al volumen montado en el service **python** que permite que el contenedor **agente-python** tome las modificaciones de nuestros scripts
 ```bash
     # ingresando al contenedor
     docker exec -it agente-python /bin/bash

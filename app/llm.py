@@ -12,7 +12,7 @@ cliente = OpenAI(api_key="ollama",base_url=os.getenv("OLLAMA_HOST")+"/v1")
 
 def llamada_a_modelo(historial, prompt): 
     mensajes = [{"role": "system", "content": prompt}] + historial
-    accion = cliente.chat.completions.create(model="llama3.2:1b",messages=mensajes,max_tokens=500)
+    accion = cliente.chat.completions.create(model="llama3.2:1b",messages=mensajes,max_tokens=300,temperature=0)
     return accion.choices[0].message.content
 
 # VERSIÓN ANTERIOR CON ANTHROPIC:
