@@ -312,7 +312,13 @@ Como inicio se define el arbol de directorios,segun la practica recomendada y si
 ```
 Se dispondran de dos servicios **app**  y **ollama** ambos dentro de contenedores levantado en base a imagenes Docker.
 
- Para el **services** con etiqueta **app** , construye su imagen mediante la instruccion **build** quien establece su contexto en la carpeta actual **.** de modo que buscara en la carpeta actual el **Dockerfile** . Se establece la relacion de orden  (no de disponibilidad)  por lo que se recomienda usar un **healthcheck** de modo que Docker correra esta prueba cada ciertos segundos. en services **ollama: condition: service_healthy** y en ollama **healthcheck: test** .
+ Para el **services** con etiqueta **app** , construye su imagen mediante la instruccion **build** quien establece su contexto en la carpeta actual **.** de modo que buscara en la carpeta actual el **Dockerfile** 
+
+ La directiva **volumes: - ./app:/app/app**  permite montar el codigo local dentro del contenedor , lo cual nos permitirá modificar scripts sin reconstruir la imagen, esto no toca los volumenes de produccion (ollama),unicamente exponemos el codigo local al contenedor.
+Montamos todo lo que hay dentro de /app de nuestro host en /app del contenedor, luego al ejecutar **python -m app.main** python busca un paquete app dentro de /app (WOKDIR /app) ,pero al no haber un directorio app dentro de /app , lo que hace es declarar esa estructura de carpetas en volumes  como /app/app
+
+
+ Se establece la relacion de orden  (mas no de disponibilidad)  mediante **depends_on: - ollama:** por lo que se recomienda usar un **healthcheck** de modo que Docker correra esta prueba cada ciertos segundos. en services **ollama: condition: service_healthy** y en ollama **healthcheck: test** .
 
 Seguidamente las variables de entorno que python recibira **environment:** **OLLAMA_HOST =** que Docker resolvera automaticamente.
 
@@ -384,6 +390,25 @@ En este script vive el modelo ollama , tambien provisto por openai, si bien es c
 Se crea el cliente **cliente = OpenAI()** con una variable de entorno por defecto **OLLAMA_HOST** .
 
 La funcion **llamada_a_modelo** invocada desde agentes.py concatena el historial de **mensajes** , haciendo luego la consulta al modelo con ese mensaje como argumento **cliente.chat.completions.create(..message=mensajes..)**
+
+### mcp.py
+
+Donde se definen los tools como pares clave-valor. La funcion **ejecutar_herramienta** invocada desde agentes ejecutan a su vez una llamada a por ejemplo **consultar_empresa** del modulo tool/empresa.py mediante **return TOOLS(nombre)(parametros)**
+
+### tools/empresa.py
+
+Las funciones consultar_empresa reciben el nombre como argumento y devuelven la informacion **return {"empleados":mock.get(nombre,"No hallado")}**
+
+### main.py
+
+Finalmente  el script que inicia la ejecucion , dentro de un bucle se recibe la entrada de usuario y se hace la llamada al agente via **iniciar_agente** , esto sera ejecutado (eso se pretende) dentro del contenedor que correra la linea CMD ["python","-m","app.main"]
+
+La siguiente imagen de elaboracion propia corresponde a la arquitectura minimalista del proyecto
+
+<p align=center>
+    <img src=imagenes/arquitectura.png width="80%">
+</p>
+
 
 Entorno virtual
 ```bash

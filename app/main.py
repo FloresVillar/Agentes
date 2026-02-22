@@ -7,7 +7,7 @@ def main():
             print("Terminando")
             break
         respuesta = iniciar_agente(entrada)
-        print(f"respuesta de agente {respuesta}\n")
+        #print(f"respuesta de agente {respuesta}\n")
 
 if __name__=='__main__':
     main()
