@@ -151,3 +151,328 @@ Respuesta final:{"herramienta_llamada":"consultar_empresa","parametros":{"nombre
 Usuario:salir
 Terminando
 ```
+
+Okay , pero en este punto se usa un mock, no una data real; es mas, el mcp.py actual no es el estandar MCP, ni mucho menos.A lo sumo, se dispone de un React Loop (razonamiento + accion) de modo que para implementar el MCP, de modo que agente no llamara solo a funciones sin a un servidor MCP con recursos y herramientas
+
+<p align=center>
+    <img src="imagenes/arquitectura_2.png" width="80%">
+</p>
+
+**tools/empresa.py→mcp_server.py**
+
+Tools/empresa.py debera ser reemplazado por un/unos servidores.
+
+Lo reemplazamos por server_mcp.py , donde se crea un objeto FastMCP agregando a su catologo de funciones las funciones **consultar_empresa** y **buscar_documentos** mediante el decorador @mcp.tools
+
+```bash
+from mcp.server.fastmcp import FastMCP
+
+# Creamos el servidor
+mcp = FastMCP("Servidor-Empresarial")
+
+@mcp.tool()
+def consultar_empresa(nombre: str) -> str:
+    """Consulta el número de empleados de una empresa."""
+    mock = {"Empresa X": 100, "Empresa Y": 200}
+    return f"Resultado: {nombre} tiene {mock.get(nombre, '0')} empleados."
+
+@mcp.tool()
+def buscar_documentos(nombre_documento: str) -> str:
+    """Busca documentos específicos en la base de datos."""
+    return f"Documento '{nombre_documento}' ENCONTRADO."
+
+if __name__ == "__main__":
+    mcp.run()
+```
+**mcp.py**
+
+El modulo mcp.py ya no tendra un simple array de diccionarios TOOLS, ahora se gestiona la comunicacion via stdio (estandar de MCP) . **server_params** configura el servidor como un subproceso con **args = ["-m","app.server_mcp"]""** .
+
+En tanto que async de la libreria **asyncio** permite que la funcion pueda ser pausada , pues el unico worker gestionara la ejecucion concurrente de varias funciones. La conexion mencionada se establece merced a **stdio_client (server_params)** . Este objeto es usado dentro de las dos funciones **obtener_herramientas y ejecutar_herramienta**. La sintaxis aun no se profundiza a totalidad.
+
+
+```bash
+import asyncio
+from mcp import ClientSession, StdioServerParameters
+from mcp.client.stdio import stdio_client
+
+# Configuración para lanzar el servidor como un subproceso
+server_params = StdioServerParameters(
+    command="python",
+    args=["-m", "app.server_mcp"], # Ejecuta tu servidor
+    env=None
+)
+
+async def obtener_herramientas_mcp():
+    """Descubre qué herramientas ofrece el servidor"""
+    async with stdio_client(server_params) as (read, write):
+        async with ClientSession(read, write) as session:
+            await session.initialize()
+            return await session.list_tools()
+
+async def ejecutar_herramienta_mcp(nombre, parametros):
+    """Llama a una herramienta siguiendo el protocolo real"""
+    async with stdio_client(server_params) as (read, write):
+        async with ClientSession(read, write) as session:
+            await session.initialize()
+            resultado = await session.call_tool(nombre, arguments=parametros)
+            # El protocolo devuelve un objeto; extraemos el texto
+            return resultado.content[0].text
+```
+
+**agente.py**
+
+La funcion principal invocada desde **main.py** tambien se define como una CORRUTINA , de modo que puede pausarse, esto es que no devolvera la ejecucion de la funcion sino una promesa de que se ejecutará. Y desde luego el punto de pausa **await** que permite liberar el control del procesador, mientras este programa se ejecuta (calcula algo), se puede hacer otras tareas. Con **Event Loop** como orquestador de las corrutinas.Cuando una tarea usa await el Event Loop la pone en espera y salta a la siguiente tarea, **asyncio.run(main())** es el comando que enciende este motor.
+
+```bash
+import json
+from .mcp import MCPManager
+from .llm import llamada_a_modelo
+
+async def iniciar_agente(input_usuario):
+    manager = MCPManager()
+    try:
+        # 1. Handshake inicial: Descubrimiento de herramientas
+        tools_disponibles = await manager.conectar_todos()
+        
+        # Inyectamos descripciones automáticamente en el System Prompt
+        desc_tools = "\n".join([f"- {t.name}: {t.description}" for t in tools_disponibles])
+
+        prompt_mcp = f"""
+        Eres un agente que usa herramientas via MCP.
+        Responde SIEMPRE en formato JSON.
+        
+        Herramientas que tienes instaladas:
+        {desc_tools}
+
+        Si necesitas una herramienta: {{"herramienta_llamada": "nombre", "parametros": {{...}}}}
+        Si es respuesta final: {{"respuesta": "texto"}}
+        """
+
+        h_t = [{"role": "user", "content": input_usuario}]
+        
+        while True:
+            # El LLM decide qué hacer
+            a_t = llamada_a_modelo(h_t, prompt_mcp)
+            a_t = a_t.strip().replace("```json", "").replace("```", "")
+
+            try:
+                a_t_ = json.loads(a_t)
+                
+                if "herramienta_llamada" in a_t_:
+                    # El Manager busca en qué servidor vive esa herramienta y la ejecuta
+                    o_t = await manager.ejecutar_en_cualquiera(
+                        a_t_["herramienta_llamada"], 
+                        a_t_["parametros"]
+                    )
+                    
+                    h_t.append({"role": "assistant", "content": a_t})
+                    h_t.append({"role": "user", "content": f"Resultado de herramienta: {o_t}"})
+                    continue
+                    
+                return a_t_.get("respuesta", a_t)
+
+            except json.JSONDecodeError:
+                return a_t
+    finally:
+        # Importante: Cerramos todos los subprocesos de los servidores
+        await manager.cerrar()
+```
+
+**main.py**
+
+Tambien usamos corrutinas y puntos de pausa dentro de este modulo.
+
+```bash
+import asyncio
+from .agente import iniciar_agente
+
+async def main():
+    print("Agente MCP Multiserver Activo (Escribe 'salir' para terminar)")
+    while True:
+        user_input = input("\nUsuario: ")
+        if user_input.lower() in ["exit", "salir"]: break
+        
+        respuesta = await iniciar_agente(user_input)
+        print(f"Agente: {respuesta}")
+
+if __name__ == "__main__":
+    try:
+        asyncio.run(main())
+    except KeyboardInterrupt:
+        pass
+```
+
+Sin embargo se tiene un escenario local , ahora se buscaria conectarse con servidores externos
+
+
+<p align="center">
+    <img src="imagenes/arquitectura.png" width="80%">
+</p>
+
+Los siguientes bloques de codigo no estan depurados, solo son sugerencias hechas por gemini
+
+**mcp.py**
+
+```bash
+import asyncio
+from mcp import ClientSession, StdioServerParameters
+from mcp.client.stdio import stdio_client
+
+# LISTA DE SERVIDORES (Configuración centralizada)
+servidores_a_conectar = [
+    StdioServerParameters(
+    command="npx", # Usamos Node.js para ejecutar el servidor oficial
+    args=[
+        "-y", "@modelcontextprotocol/server-postgres", 
+        "postgresql://usuario:password@localhost:5432/mi_base_de_datos"
+    ],
+    env=None
+),
+    StdioServerParameters(
+        command="npx", 
+        args=["-y", "@modelcontextprotocol/server-filesystem", "G:/MisDocumentos"]
+    ),
+    StdioServerParameters(
+        command="npx", 
+        args=["-y", "@modelcontextprotocol/server-google-maps"], 
+        env={"GOOGLE_MAPS_API_KEY": "AIza..."}
+    ),
+    StdioServerParameters(
+        command="python", 
+        args=["-m", "app.server_mcp"]
+    ),
+    # Tu nuevo servidor RAG
+    StdioServerParameters(
+        command="python", 
+        args=["-m", "app.server_rag"]
+    )
+]
+
+async def obtener_herramientas_mcp():
+    """Descubre herramientas de TODOS los servidores configurados"""
+    todas_las_tools = []
+    for params in servidores_a_conectar:
+        try:
+            async with stdio_client(params) as (read, write):
+                async with ClientSession(read, write) as session:
+                    await session.initialize()
+                    lista = await session.list_tools()
+                    todas_las_tools.extend(lista.tools)
+        except Exception as e:
+            print(f"Error conectando a un servidor MCP: {e}")
+    
+    # Retornamos un objeto con atributo .tools para mantener compatibilidad con agente.py
+    class ToolsWrapper:
+        def __init__(self, tools): self.tools = tools
+    return ToolsWrapper(todas_las_tools)
+
+async def ejecutar_herramienta_mcp(nombre, parametros):
+    """Busca y ejecuta la herramienta en el servidor que la contenga"""
+    for params in servidores_a_conectar:
+        try:
+            async with stdio_client(params) as (read, write):
+                async with ClientSession(read, write) as session:
+                    await session.initialize()
+                    # Verificamos si este servidor tiene la herramienta
+                    tools_del_server = await session.list_tools()
+                    if any(t.name == nombre for t in tools_del_server.tools):
+                        resultado = await session.call_tool(nombre, arguments=parametros)
+                        return resultado.content[0].text
+        except Exception:
+            continue
+    return f"Error: La herramienta {nombre} no se encontró en ningún servidor."
+```
+
+**agente.py**
+
+```bash
+import json
+import asyncio
+from .llm import llamada_a_modelo
+from .mcp import ejecutar_herramienta_mcp, obtener_herramientas_mcp
+
+async def iniciar_agente(input_usuario):
+    # 1. Descubrimiento dinámico (Handshake MCP)
+    tools_disponibles = await obtener_herramientas_mcp()
+    
+    desc_tools = "\n".join([f"- {t.name}: {t.description}" for t in tools_disponibles.tools])
+
+    # Opcional: Podrías llamar a 'recuperar_contexto' aquí antes del prompt para inyectar RAG
+    prompt_mcp = f"""
+    Solo responde en JSON.
+    Herramientas disponibles:
+    {desc_tools}
+
+    Si necesitas una herramienta, responde: 
+    {{"herramienta_llamada": "nombre", "parametros": {{...}}}}
+    Si tienes la respuesta final:
+    {{"respuesta": "texto"}}
+    """
+
+    h_t = [{"role": "user", "content": input_usuario}]
+    
+    while True:
+        a_t = llamada_a_modelo(h_t, prompt_mcp)
+        a_t = a_t.strip().replace("```json", "").replace("```", "")
+
+        try:
+            a_t_ = json.loads(a_t)
+            
+            if "herramienta_llamada" in a_t_:
+                o_t = await ejecutar_herramienta_mcp(
+                    a_t_["herramienta_llamada"], 
+                    a_t_["parametros"]
+                )
+                print(f"MCP Output: {o_t}")
+                
+                h_t.append({"role": "assistant", "content": a_t})
+                h_t.append({"role": "user", "content": f"Resultado: {o_t}"})
+                continue 
+                
+            return a_t_.get("respuesta", a_t)
+
+        except json.JSONDecodeError:
+            return a_t
+```
+
+**llm.py**
+
+```bash
+from openai import OpenAI
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
+cliente = OpenAI(api_key="ollama", base_url=os.getenv("OLLAMA_HOST")+"/v1")
+
+def llamada_a_modelo(historial, prompt): 
+    mensajes = [{"role": "system", "content": prompt}] + historial
+    accion = cliente.chat.completions.create(
+        model="llama3.2:1b",
+        messages=mensajes,
+        max_tokens=300,
+        temperature=0
+    )
+    return accion.choices[0].message.content
+```
+
+**main.py**
+```bash
+import asyncio
+from app.agente import iniciar_agente
+
+async def main():
+    print("Agente MCP iniciado. Escribe 'salir' para terminar.")
+    while True:
+        usuario = input("\ > ")
+        if usuario.lower() in ["salir", "exit"]: break
+        
+        respuesta = await iniciar_agente(usuario)
+        print(f"\n> {respuesta}")
+
+if __name__ == "__main__":
+    asyncio.run(main())
+```
+
+**RAG**
